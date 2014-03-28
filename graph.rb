@@ -72,34 +72,26 @@ class Graph < Array
   # dijkstra
   # http://en.wikipedia.org/wiki/Dijkstra's_algorithm#Pseudocode
   def shortest_path source, target
-    distances = {}
+    distances = Hash.new Float::INFINITY
     vertices = clone
 
-    each do |vertex|
-      distances[vertex] = Float::INFINITY
-    end
-
-    if source != target
-      distances[source] = 0
+    if source == target
+      vertices.neighbors(source).each { |neighbor| distances[neighbor] = vertices.weight_between source, neighbor }
     else
-      neighbors = vertices.neighbors(source)
-      neighbors.each { |neighbor| distances[neighbor] = vertices.weight_between source, neighbor }
+      distances[source] = 0
     end
 
     until vertices.empty?
-      nearest_vertex = vertices.inject do |a, b|
-        distances[a] < distances[b] ? a : b
+      nearest = vertices.min_by { |vertex| distances[vertex] }
+      vertices.delete nearest
+
+      break if distances[nearest] == Float::INFINITY
+
+      vertices.neighbors(nearest).each do |vertex|
+        if (new_distance = distances[nearest] + vertices.weight_between(nearest, vertex)) < distances[vertex]
+          distances[vertex] = new_distance
+        end
       end
-
-      break if distances[nearest_vertex] == Float::INFINITY
-
-      neighbors = vertices.neighbors(nearest_vertex)
-      neighbors.each do |vertex|
-        new_distance = distances[nearest_vertex] + vertices.weight_between(nearest_vertex, vertex)
-        distances[vertex] = new_distance if !distances[vertex] || new_distance < distances[vertex]
-      end
-
-      vertices.delete nearest_vertex
     end
 
     distances[target]
