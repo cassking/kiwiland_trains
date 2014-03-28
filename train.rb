@@ -9,7 +9,6 @@ puts "Output #4: #{graph.weight_between 'A', 'E', 'B', 'C', 'D'}"
 puts "Output #5: #{graph.weight_between 'A', 'E', 'D'}"
 puts "Output #6: #{graph.find_all_paths('C', 'C', 3).count}"
 puts "Output #7: #{graph.find_all_paths('A', 'C', 4, true).count}"
-
-# Output #8: 9
-# Output #9: 9
-# Output #10: 7
+puts "Output #8: #{graph.shortest_path('A', 'C')}"
+puts "Output #9: #{graph.shortest_path('B', 'B')}"
+#puts "Output #10: #{graph.dijkstra('B', 'B')}"

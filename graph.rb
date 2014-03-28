@@ -38,7 +38,6 @@ class Graph < Array
     path = path + [source]
 
     check = exactly ? path.length > k : path.length >= k
-
     return [path] if target == source && check
     return [] unless include? source
 
@@ -68,6 +67,42 @@ class Graph < Array
     end
 
     weight
+  end
+
+  # dijkstra
+  # http://en.wikipedia.org/wiki/Dijkstra's_algorithm#Pseudocode
+  def shortest_path source, target
+    distances = {}
+    vertices = clone
+
+    each do |vertex|
+      distances[vertex] = Float::INFINITY
+    end
+
+    if source != target
+      distances[source] = 0
+    else
+      neighbors = vertices.neighbors(source)
+      neighbors.each { |neighbor| distances[neighbor] = vertices.weight_between source, neighbor }
+    end
+
+    until vertices.empty?
+      nearest_vertex = vertices.inject do |a, b|
+        distances[a] < distances[b] ? a : b
+      end
+
+      break if distances[nearest_vertex] == Float::INFINITY
+
+      neighbors = vertices.neighbors(nearest_vertex)
+      neighbors.each do |vertex|
+        new_distance = distances[nearest_vertex] + vertices.weight_between(nearest_vertex, vertex)
+        distances[vertex] = new_distance if !distances[vertex] || new_distance < distances[vertex]
+      end
+
+      vertices.delete nearest_vertex
+    end
+
+    distances[target]
   end
 end
 
