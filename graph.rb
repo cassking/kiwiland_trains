@@ -20,7 +20,7 @@ class Graph < Array
     if edge = find_edge(source, target)
       edge.weight = weight
     else
-      @edges.push Edge.new(source, target, weight)
+      @edges.push source: source, target: target, weight: weight
     end
   end
 
@@ -28,7 +28,7 @@ class Graph < Array
     neighbors = []
 
     @edges.each do |edge|
-      neighbors.push edge.target if edge.source == vertex
+      neighbors.push edge[:target] if edge[:source] == vertex
     end
 
     return neighbors.uniq
@@ -53,7 +53,7 @@ class Graph < Array
   end
 
   def find_edge source, target
-    @edges.find { |edge| edge.source == source && edge.target == target }
+    @edges.find { |edge| edge[:source] == source && edge[:target] == target }
   end
 
   def weight_between *nodes
@@ -63,7 +63,7 @@ class Graph < Array
       target = nodes[0]
       edge = find_edge source, target
       return 'NO SUCH ROUTE' unless edge
-      weight = weight + edge.weight
+      weight = weight + edge[:weight]
     end
 
     weight
@@ -95,15 +95,5 @@ class Graph < Array
     end
 
     distances[target]
-  end
-end
-
-class Edge
-  attr_accessor :source, :target, :weight
-
-  def initialize source, target, weight=1
-    @source = source
-    @target = target
-    @weight = weight
   end
 end
