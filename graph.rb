@@ -1,15 +1,12 @@
 class Graph < Array
-  def initialize
+  def initialize data
     @edges = []
+    load data
   end
 
-  def self.load_from_file path
-    new.tap do |graph|
-      data = File.read path
-
-      data.scan(/([A-Z])([A-Z])(\d+)/) do |source, target, weight|
-        graph.connect source, target, weight.to_i
-      end
+  def load data
+    data.scan(/([A-Z])([A-Z])(\d+)/) do |source, target, weight|
+      connect source, target, weight.to_i
     end
   end
 
