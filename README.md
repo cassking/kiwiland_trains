@@ -20,7 +20,7 @@ In the sample data below, there are two such trips: C-D-C (2 stops). and C-E-B-C
 In the sample data below, there are three such trips: A to C (via B,C,D); A to C (via D,C,D); and A to C (via D,E,B).
 8. The length of the shortest route (in terms of distance to travel) from A to C.
 9. The length of the shortest route (in terms of distance to travel) from B to B.
-10. The number of different routes from C to C with a distance of less than 30.  In the sample data, the trips are: CDC, CEBC, CEBCDC, CDCEBC, CDEBC, CEBCEBC, CEBCEBCEBC.
+10. The number of different routes from C to C with a distance of less than 30.  In the sample data, the trips are:
 
 Test Input:
 

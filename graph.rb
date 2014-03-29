@@ -34,22 +34,44 @@ class Graph < Array
     return neighbors.uniq
   end
 
-  def find_all_paths source, target, k, exactly=false, path=[]
+  def traverse source, target, k, path=[], &block
     path = path + [source]
 
-    check = exactly ? path.length > k : path.length >= k
-    return [path] if target == source && check
     return [] unless include? source
+    paths = yield(source, target, k, path) ? [path] : []
 
-    paths = []
     neighbors(source).each do |neighbor|
       if path.length < k + 1
-        new_paths = find_all_paths neighbor, target, k, exactly, path
+        new_paths = traverse neighbor, target, k, path, &block
         paths = paths + new_paths
       end
     end
 
     paths
+  end
+
+  def find_all_paths_max_w source, target, w, path=[]
+    path = path + [source]
+
+    return [] unless include? source
+    paths = path.length > 1 && path[-1] == target && weight_between(*path) < w ? [path] : []
+
+    neighbors(source).each do |neighbor|
+      if weight_between(*path) + weight_between(source, neighbor) < w
+        new_paths = find_all_paths_max_w neighbor, target, w, path
+        paths = paths + new_paths
+      end
+    end
+
+    paths
+  end
+
+  def find_all_paths_max_k source, target, k, path=[]
+    traverse(source, target, k, path) { |target, source, k, path| target == source && path.length > 1 }
+  end
+
+  def find_all_paths_exactly_k source, target, k, path=[]
+    traverse(source, target, k, path) { |target, source, k, path| target == source && path.length == k + 1 }
   end
 
   def find_edge source, target
