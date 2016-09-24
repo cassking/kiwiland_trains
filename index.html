@@ -69,12 +69,50 @@
     </script>
 
     <script type='text/babel' data-module='Core' data-language='javascript'>
+      /**
+       * Represents a graph evaulate with result and list of steps (each step is a graph snapshot).
+       */
       class GraphEvaluate {
-        constructor(graph) {
+        /**
+         * @constructor
+         * @param {object} graph - A graph object.
+         * @param {string} from - The start node.
+         * @param {string} to - The end node
+         */
+        constructor(graph, from, to) {
           this.graph = graph;
+          this.from = from;
+          this.to = to;
           this.steps = [];
         }
 
+        /**
+         * Given a path it returns the total weight between thems.
+         *
+         * @param {array[string]} path - A array of node.
+         * @return {number} - The weight
+         */
+        getPathWeight(path) {
+          let total = 0;
+          let from = path[0];
+
+          for (let i = 1; i < path.length; i++) {
+            let to = path[i];
+            total = total + this.getWeight(from, to);
+            from = to;
+          };
+
+          return total;
+        }
+
+        /**
+         * Given the start node and the end it returns the total weight between thems.
+         *
+         * @param {string} from - The start node.
+         * @param {string} to - The end node.
+         * @return {number} - The weight
+         * @exception {Error} - When the given edge does not exists.
+         */
         getWeight(from, to) {
           let edge = _.find(this.graph.edges, {from, to});
 
@@ -89,21 +127,48 @@
           return edge.weight;
         }
 
+        /**
+         * Given the start node and the end it returns true when they are connected.
+         *
+         * @param {string} from - The start node.
+         * @param {string} to - The end node.
+         * @return {bool} - True when they are connected.
+         */
         isNeighbor(from, to) {
           return _.find(this.graph.edges, {from, to});
         }
 
+        /**
+         * Given the node it returns a list of connected nodes.
+         *
+         * @param {string} from - The node.
+         * @return {array[string]} - The list of connected nodes.
+         */
         getNeighbors(from) {
           return _.filter(this.graph.edges, {from}).map(n => n.to);
         }
 
+        /**
+         * Given the node name it returns a node object.
+         *
+         * @param {string} name - The node.
+         * @return {object} - The node object.
+         */
         findNode(name) {
           return _.find(this.graph.nodes, { name });
         }
 
+        /**
+         * Given the node name it sets the node as visited.
+         *
+         * @param {string} name - The node.
+         */
         setAsVisited(name) {
           let node = this.findNode(name);
-          node.state = 'b';
+
+          if (node) {
+            node.state = 'b';
+          }
 
           for(let node of this.graph.nodes) {
             if (node.state === 'g') {
@@ -111,211 +176,204 @@
             }
           }
 
-          return this.steps.push(_.cloneDeep(this.graph));
+          this.steps.push(_.cloneDeep(this.graph));
         }
 
+        /**
+         * Given the node name it sets the node as candidate.
+         *
+         * @param {string} name - The node.
+         * @return {object} - A graph snapshot.
+         */
         setAsCandidate(name) {
           let node = this.findNode(name);
-          node.state = 'g';
-          return this.steps.push(_.cloneDeep(this.graph));
+
+          if (node) {
+            node.state = 'g';
+          }
+
+          this.steps.push(_.cloneDeep(this.graph));
         }
 
-        setAllUnvisited(except='') {
+        /**
+         * Set all nodes as unvisited.
+         *
+         * @param {string} name - The node.
+         */
+        setAllUnvisited() {
           for(let node of this.graph.nodes) {
-            if (node.name !== except) {
-              node.state = 'w';
+            node.state = 'w';
+          }
+
+          this.steps.push(_.cloneDeep(this.graph));
+        }
+
+        /**
+         * Traverse the graph and returns a array of paths.
+         *
+         * @param {string} from - The start node.
+         * @param {string} to - The end node.
+         * @param {array[string]} visiteds - The list of visited node.
+         * @param {function} candidateCondition - When returns true set the node as candidate.
+         * @param {function} matchCondition - When returns true accepets the current path.
+         * @return {array[string]} - The list of paths.
+         */
+        iterate(from, to, visiteds, candidateCondition, matchCondition) {
+          let match = matchCondition || function() { return true; };
+          let candidate = candidateCondition || function() { return true; };
+
+          let current = from;
+          let path = visiteds.concat([current]);
+          this.setAsVisited(current);
+
+          let paths = [];
+          if (current === this.to && visiteds.length > 1 && match(visiteds, path)) {
+            paths.push(path);
+          }
+
+          for (let neighbor of this.getNeighbors(current)) {
+            if (candidate(visiteds, path, current, neighbor)) {
+              this.setAsCandidate(neighbor);
+              let newPaths = this.iterate(neighbor, to, path, candidateCondition, matchCondition);
+              paths = paths.concat(newPaths);
             }
           }
 
-          return this.steps.push(_.cloneDeep(this.graph));
+          return paths;
         }
 
+        /**
+         * Retruns the result with a list of step.
+         *
+         * @return {object} - The result and a list of step (graph snapshots).
+         */
         evaluate() {
-          this.setAllUnvisited();
-          return  {steps: this.steps, result: -1};
+          return  {steps: this.steps, result: null};
         }
       };
 
+      /**
+       * Returns the shortest path between two nodes.
+       *
+       * dijkstra
+       * http://en.wikipedia.org/wiki/Dijkstra's_algorithm#Pseudocode
+       */
       class ShortestWeightEvaluate extends GraphEvaluate {
-        constructor(graph, from, to) {
-          super(graph);
-          this.from = from;
-          this.to = to;
-        }
-
         evaluate() {
           this.setAllUnvisited();
-          let MAX = 9999;
+          let from = this.from;
+          let to = this.to;
 
-          let shortest = (from, to) => {
-            let weights = {};
-            let nodes = _.cloneDeep(this.graph.nodes);
-            nodes = nodes.map(n => n.name);
-
-            for (let node of nodes) {
-              weights[node] = MAX;
-            }
-
-            if (from === to) {
-              for (let neighbor of this.getNeighbors(from)) {
-                weights[neighbor] = this.getWeight(from, neighbor);
-              }
-            } else {
-              weights[from] = 0;
-            }
-
-            this.setAsVisited(from);
-
-            while (nodes.length !== 0) {
-              let nearest = _.minBy(nodes, (n) => weights[n]);
-              nodes = nodes.filter(n => n !== nearest);
-              this.setAsVisited(nearest);
-
-              if (weights[nearest] === MAX) {
-                break;
-              }
-
-              for(let neighbor of this.getNeighbors(nearest)) {
-                this.setAsCandidate(neighbor);
-                let newWeight = weights[nearest] + this.getWeight(nearest, neighbor);
-
-                if (newWeight < weights[neighbor]) {
-                  weights[neighbor] = newWeight;
-                }
-              }
-            }
-
-            return weights[to];
+          if (!this.findNode(from)) {
+            return {steps: this.steps, result: null, error: 'NO SUCH ROUTE'};
           }
 
-          let path = shortest(this.from, this.to);
-          return {steps: this.steps, result: path};
+          if (!this.findNode(to)) {
+            return {steps: this.steps, result: null, error: 'NO SUCH ROUTE'};
+          }
+
+          let weights = {};
+          let nodes = _.cloneDeep(this.graph.nodes);
+          nodes = nodes.map(n => n.name);
+
+          for (let node of nodes) {
+            weights[node] = Number.MAX_VALUE;
+          }
+
+          if (from === to) {
+            for (let neighbor of this.getNeighbors(from)) {
+              weights[neighbor] = this.getWeight(from, neighbor);
+            }
+          } else {
+            weights[from] = 0;
+          }
+
+          this.setAsVisited(from);
+
+          while (nodes.length !== 0) {
+            let nearest = _.minBy(nodes, (n) => weights[n]);
+            nodes = nodes.filter(n => n !== nearest);
+            this.setAsVisited(nearest);
+
+            if (weights[nearest] === Number.MAX_VALUE) {
+              break;
+            }
+
+            for(let neighbor of this.getNeighbors(nearest)) {
+              this.setAsCandidate(neighbor);
+              let newWeight = weights[nearest] + this.getWeight(nearest, neighbor);
+
+              if (newWeight < weights[neighbor]) {
+                weights[neighbor] = newWeight;
+              }
+            }
+          }
+
+          if (weights[to] === Number.MAX_VALUE) {
+            return {steps: this.steps, result: null, error: 'NO SUCH ROUTE'};
+          }
+
+          return {steps: this.steps, result: weights[to]};
         }
       };
 
-      class CounterPathsMaxWeightEvaluate extends GraphEvaluate {
+      /**
+       * Returns the paths with the N max total weight.
+       */
+      class MaxWeightEvaluate extends GraphEvaluate {
         constructor(graph, from, to, max) {
-          super(graph);
-          this.from = from;
-          this.to = to;
+          super(graph, from, to);
           this.max = max;
         }
 
         evaluate() {
+          let candidateCondition = (visiteds, path, current, next) => this.getPathWeight(path) + this.getWeight(current, next) < this.max;
+          let matchCondition = (visiteds, path) => this.getPathWeight(path) < this.max
+
           this.setAllUnvisited();
+          let paths = this.iterate(this.from, this.to, [], candidateCondition, matchCondition);
 
-          let counter = (from, to, visiteds=[]) => {
-            let current = from;
-            let path = visiteds.concat([current]);
-            this.setAsVisited(current);
-
-            let total = 0;
-            let first = path[0];
-
-            for (let i = 1; i < path.length; i++) {
-              let next = path[i];
-              total = total + this.getWeight(first, next);
-              first = next;
-            };
-
-            let paths = [];
-            if (current === to && path.length > 1 && total < this.max) {
-              paths.push(path);
-              this.setAllUnvisited(this.from);
-            }
-
-            for (let neighbor of this.getNeighbors(current)) {
-              if (total + this.getWeight(current, neighbor) < this.max) {
-                this.setAsCandidate(neighbor);
-                let newPaths = counter(neighbor, to, path);
-                paths = paths.concat(newPaths);
-              }
-            }
-
-            return paths;
-          };
-
-          let paths = counter(this.from, this.to);
-          return {steps: this.steps, result: paths.length};
+          return { steps: this.steps, result: paths.length };
         }
       };
 
-      class CounterPathsMaxHopsEvaluate extends GraphEvaluate {
+      /**
+       * Returns the paths with the N max stops.
+       */
+      class MaxHopsEvaluate extends GraphEvaluate {
         constructor(graph, from, to, max) {
-          super(graph);
-          this.from = from;
-          this.to = to;
+          super(graph, from, to);
           this.max = max;
         }
 
         evaluate() {
+          let candidateCondition = (visiteds) => visiteds.length < this.max;
+
           this.setAllUnvisited();
+          let paths = this.iterate(this.from, this.to, [], candidateCondition);
 
-          let counter = (from, to, visiteds=[]) => {
-            let current = from;
-            let path = visiteds.concat([current]);
-            this.setAsVisited(current);
-
-            let paths = [];
-            if (current === this.to && visiteds.length > 1) {
-              paths.push(path);
-              this.setAllUnvisited(this.from);
-            }
-
-            for (let neighbor of this.getNeighbors(current)) {
-              if (visiteds.length < this.max) {
-                this.setAsCandidate(neighbor);
-                let newPaths = counter(neighbor, to, path);
-                paths = paths.concat(newPaths);
-              }
-            }
-
-            return paths;
-          };
-
-          let paths = counter(this.from, this.to);
-          return {steps: this.steps, result: paths.length};
+          return { steps: this.steps, result: paths.length };
         }
       };
 
-      class CounterPathsExactlyHopsEvaluate extends GraphEvaluate {
-        constructor(graph, from, to, exact) {
-          super(graph);
-          this.from = from;
-          this.to = to;
-          this.exact = exact;
-        }
-
+      /**
+       * Returns the paths with the exactly N stops.
+       */
+      class ExactlyHopsEvaluate extends MaxHopsEvaluate {
         evaluate() {
+          let candidateCondition = (visiteds) => visiteds.length < this.max;
+          let matchCondition = (visiteds) => visiteds.length === this.max;
+
           this.setAllUnvisited();
+          let paths = this.iterate(this.from, this.to, [], candidateCondition, matchCondition);
 
-          let counter = (from, to, visiteds=[]) => {
-            let current = from;
-            let path = visiteds.concat([current]);
-            this.setAsVisited(current);
-
-            let paths = [];
-            if (current === this.to && visiteds.length > 1 && visiteds.length == this.exact) {
-              paths.push(path);
-              this.setAllUnvisited(this.from);
-            }
-
-            for (let neighbor of this.getNeighbors(current)) {
-              if (visiteds.length < this.exact) {
-                this.setAsCandidate(neighbor);
-                let newPaths = counter(neighbor, to, path);
-                paths = paths.concat(newPaths);
-              }
-            }
-
-            return paths;
-          };
-
-          let paths = counter(this.from, this.to);
-          return {steps: this.steps, result: paths.length};
+          return { steps: this.steps, result: paths.length };
         }
       };
 
+      /**
+       * Returns the total weight between two nodes.
+       */
       class WeightEvaluate extends GraphEvaluate {
         constructor(graph, ...tos) {
           super(graph);
@@ -347,20 +405,27 @@
         }
       };
 
+      /**
+       * Represents a rails network with stops and routes.
+       */
       class RailsNetwork {
         routes = [];
         stations = [];
 
-        constructor(routesStr) {
-          if (!routesStr) {
+        /**
+         * @constructor
+         * @param {string} routes - The routes as string (Graph: AB5, BC4, CD8, DC8, DE6, AD5, CE2, EB3, AE7).
+         */
+        constructor(routes) {
+          if (!routes) {
             return;
           }
 
           let isNumeric = (str) => (/^\d+$/).test(str);
           let isLetter = (str) => (/^[a-z]$/i).test(str);
-          let routes = routesStr.trim().substring(7).split(',').map(s => s.trim());
+          let normalizedRoutes = routes.trim().substring(7).split(',').map(s => s.trim());
 
-          for(let r of routes) {
+          for(let r of normalizedRoutes) {
             let from = r[0];
             let to = r[1];
             let distance = r.substring(2);
@@ -373,41 +438,52 @@
           }
         }
 
+        /**
+         * Add a route.
+         *
+         * @param {string} from - The start node.
+         * @param {string} to - The end node.
+         * @param {number} distance - The distance between thems.
+         */
         addRoute(from, to, distance) {
           this.stations = _.union(this.stations, [from]);
           this.stations = _.union(this.stations, [to]);
           this.routes = _.union(this.routes, [`${from}${to}${distance}`]);
         }
 
+        /**
+         * The graph representation of a rails network.
+         *
+         * @return {object} - The current rails network as a graph.
+         */
         toGraph() {
-          let nodes = [];
-          let edges = [];
+          let getDistance = (from, to) => parseFloat(_.find(this.routes, route => route.startsWith(`${from}${to}`)).substring(2));
+          let getNeighbors = (from) => _.filter(this.routes, route => route.startsWith(`${from}`))
+                                        .map(route => route.substring(1,2));
 
-          for (let station of this.stations) {
-            let neighbors = _.filter(this.routes, route => route.startsWith(`${station}`))
-                             .map(route => route.substring(1,2));
+          let nodes = this.stations.map(station => {
+            return { name: station, neighbors: getNeighbors(station) };
+          });
 
-            nodes.push({
-              name: station
-            });
-
-            for (let neighbor of neighbors) {
-              let weight = _.find(this.routes, route => route.startsWith(`${station}${neighbor}`)).substring(2);
-
-              edges.push({
-                from: station,
+          let edges = nodes.map((node) => {
+            return node.neighbors.map((neighbor) => {
+              return {
+                from: node.name,
                 to: neighbor,
-                weight: parseFloat(weight)
-              });
-            }
-          }
+                weight: getDistance(node.name, neighbor)
+              };
+            });
+          });
 
-          return { nodes: nodes, edges: edges };
+          return { nodes: nodes, edges: _.flatMap(edges) };
         }
       };
     </script>
 
     <script type='text/babel' data-module='UI' data-language='jsx'>
+      /**
+       * Represents the component section.
+       */
       let Problem = React.createClass({
         render: function() {
           return (
@@ -465,6 +541,9 @@
         }
       });
 
+      /**
+       * Represents a module of code section.
+       */
       let Module = React.createClass({
         getCode: function() {
           return {
@@ -487,6 +566,9 @@
         }
       });
 
+      /**
+       * Represents the code section.
+       */
       let Code = React.createClass({
         getInitialState: function() {
           return {
@@ -518,6 +600,9 @@
         }
       });
 
+      /**
+       * Represents the test section.
+       */
       let Test = React.createClass({
         componentDidMount: function() {
           let jasmine = $('.jasmine_html-reporter');
@@ -530,12 +615,11 @@
         }
       });
 
+      /**
+       * Represents a graph state of one solution.
+       */
       let Graph = React.createClass({
         componentDidMount: function() {
-          if (!this.refs.graph) {
-            return;
-          }
-
           let colors = {
             'w':  '#97C2FC',
             'g': 'gray',
@@ -595,11 +679,10 @@
             }
           };
 
-          new vis.Network(this.refs.graph, data, options);
+          this.visGraph = new vis.Network(this.refs.graph, data, options);
 
           let i = 0;
-
-          setInterval(() => {
+          this.intervalGraph = setInterval(() => {
             let step = this.props.steps[i % this.props.steps.length];
             let nodes = step.nodes.map(mapNodes);
 
@@ -611,6 +694,17 @@
           }, 1000);
         },
 
+        componentWillUpdate: function() {
+          if (this.visGraph) {
+            clearInterval(this.intervalGraph);
+            this.visGraph.destroy();
+          }
+        },
+
+        componentDidUpdate: function() {
+          this.componentDidMount();
+        },
+
         render: function() {
           return (
             <div className='graph'ref='graph'></div>
@@ -618,22 +712,29 @@
         }
       });
 
+      /**
+       * Represents each solution on the section.
+       */
       let SolutionItem = React.createClass({
         render: function() {
+          let item = _.cloneDeep(this.props.item);
           let graph = this.props.network.toGraph();
-          let evaluate = this.props.item[0];
-          let args = this.props.item.splice(1);
+          let label = item[0];
+          let evaluate = item[1];
+          let args = item.splice(2);
           let title = `Output #${this.props.idx + 1}: `;
 
           let output = new window[evaluate](graph, ...args).evaluate();
-          let result = title + (output.result || output.error);
+          let result = title + (output.result || output.error || 0);
           let steps = output.steps;
 
           return (
             <li className='list-group-item'>
               <form className='form'>
                 <div className='form-group'>
-                  <input type='text'
+                  <label for='input'>{label}</label>
+                  <input id='input'
+                         type='text'
                          disabled={true}
                          className='form-control'
                          value={result}/>
@@ -645,22 +746,25 @@
         }
       });
 
+      /**
+       * Represent the soluction section. Has a list of solutions.
+       */
       let Solution = React.createClass({
         defaultValue: 'Graph: AB5, BC4, CD8, DC8, DE6, AD5, CE2, EB3, AE7',
 
         getInitialState: function() {
           return {
             items: [
-              ['WeightEvaluate', 'A', 'B', 'C'],
-              ['WeightEvaluate', 'A', 'D'],
-              ['WeightEvaluate', 'A', 'D', 'C'],
-              ['WeightEvaluate', 'A', 'E', 'B', 'C', 'D'],
-              ['WeightEvaluate', 'A', 'E', 'D'],
-              ['CounterPathsMaxHopsEvaluate', 'C', 'C', 3],
-              ['CounterPathsExactlyHopsEvaluate', 'A', 'C', 4],
-              ['ShortestWeightEvaluate', 'A', 'C'],
-              ['ShortestWeightEvaluate', 'B', 'B'],
-              ['CounterPathsMaxWeightEvaluate', 'C', 'C', 30],
+              ['Total distance A-B-C', 'WeightEvaluate', 'A', 'B', 'C'],
+              ['Total distance A-D', 'WeightEvaluate', 'A', 'D'],
+              ['Total distance A-D-C', 'WeightEvaluate', 'A', 'D', 'C'],
+              ['Total distance A-E-B-C-D', 'WeightEvaluate', 'A', 'E', 'B', 'C', 'D'],
+              ['Total distance A-E-D', 'WeightEvaluate', 'A', 'E', 'D'],
+              ['Count trips C-C (maximum 3 stops)', 'MaxHopsEvaluate', 'C', 'C', 3],
+              ['Count trips A-C (exactly 4 stops)', 'ExactlyHopsEvaluate', 'A', 'C', 4],
+              ['Shortest trip length A-C', 'ShortestWeightEvaluate', 'A', 'C'],
+              ['Shortest trip length B-B', 'ShortestWeightEvaluate', 'B', 'B'],
+              ['Count trips C-C (less than 30 distance)', 'MaxWeightEvaluate', 'C', 'C', 30],
             ],
 
             network: new RailsNetwork(this.defaultValue)
