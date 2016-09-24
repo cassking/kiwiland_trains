@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Kiwiland Trains</title>
+
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react-dom.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.15.0/babel.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine-html.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/boot.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.1/prism.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.1/components/prism-javascript.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.1/components/prism-jsx.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.16.1/lodash.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
+
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine.min.css'>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.1/themes/prism.min.css'>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.css'>
+  </head>
+  <body class='container'>
+    <div class='page-header'>
+      <h1>Kiwiland Trains</h1>
+    </div>
+
+    <section>
+      <h3>The Problem</h3>
+      <div id='problem'></div>
+    </section>
+    <hr/>
+
+    <section>
+      <h3>The Solution</h3>
+      <div id='solution'></div>
+    </section>
+    <hr/>
+
+    <section>
+      <h3>The Code</h3>
+      <div id='code'></div>
+    </section>
+    <hr/>
+
+    <section>
+      <h3>The Test Suite</h3>
+      <div id='test'></div>
+    </section>
+
+    <script type='text/babel'>
+      $(document).ready(() => {
+        let problem =  $('#problem');
+        ReactDOM.render(<Problem/>, problem[0]);
+
+        let solution =  $('#solution');
+        ReactDOM.render(<Solution/>, solution[0]);
+
+        let code =  $('#code');
+        ReactDOM.render(<Code/>, code[0]);
+
+        let test =  $('#test');
+        ReactDOM.render(<Test/>, test[0]);
+
+      });
+    </script>
+
+    <script type='text/babel' data-module='Core' data-language='javascript'>
+      class GraphEvaluate {
+        constructor(graph) {
+          this.graph = graph;
+          this.steps = [];
+        }
+
+        getWeight(from, to) {
+          let edge = _.find(this.graph.edges, {from, to});
+
+          if (from === to) {
+            return 0;
+          }
+
+          if (!edge) {
+            throw new Error('NO SUCH ROUTE');
+          }
+
+          return edge.weight;
+        }
+
+        isNeighbor(from, to) {
+          return _.find(this.graph.edges, {from, to});
+        }
+
+        getNeighbors(from) {
+          return _.filter(this.graph.edges, {from}).map(n => n.to);
+        }
+
+        findNode(name) {
+          return _.find(this.graph.nodes, { name });
+        }
+
+        setAsVisited(name) {
+          let node = this.findNode(name);
+          node.state = 'b';
+
+          for(let node of this.graph.nodes) {
+            if (node.state === 'g') {
+              node.state = 'w';
+            }
+          }
+
+          return this.steps.push(_.cloneDeep(this.graph));
+        }
+
+        setAsCandidate(name) {
+          let node = this.findNode(name);
+          node.state = 'g';
+          return this.steps.push(_.cloneDeep(this.graph));
+        }
+
+        setAllUnvisited(except='') {
+          for(let node of this.graph.nodes) {
+            if (node.name !== except) {
+              node.state = 'w';
+            }
+          }
+
+          return this.steps.push(_.cloneDeep(this.graph));
+        }
+
+        evaluate() {
+          this.setAllUnvisited();
+          return  {steps: this.steps, result: -1};
+        }
+      };
+
+      class ShortestWeightEvaluate extends GraphEvaluate {
+        constructor(graph, from, to) {
+          super(graph);
+          this.from = from;
+          this.to = to;
+        }
+
+        evaluate() {
+          this.setAllUnvisited();
+          let MAX = 9999;
+
+          let shortest = (from, to) => {
+            let weights = {};
+            let nodes = _.cloneDeep(this.graph.nodes);
+            nodes = nodes.map(n => n.name);
+
+            for (let node of nodes) {
+              weights[node] = MAX;
+            }
+
+            if (from === to) {
+              for (let neighbor of this.getNeighbors(from)) {
+                weights[neighbor] = this.getWeight(from, neighbor);
+              }
+            } else {
+              weights[from] = 0;
+            }
+
+            this.setAsVisited(from);
+
+            while (nodes.length !== 0) {
+              let nearest = _.minBy(nodes, (n) => weights[n]);
+              nodes = nodes.filter(n => n !== nearest);
+              this.setAsVisited(nearest);
+
+              if (weights[nearest] === MAX) {
+                break;
+              }
+
+              for(let neighbor of this.getNeighbors(nearest)) {
+                this.setAsCandidate(neighbor);
+                let newWeight = weights[nearest] + this.getWeight(nearest, neighbor);
+
+                if (newWeight < weights[neighbor]) {
+                  weights[neighbor] = newWeight;
+                }
+              }
+            }
+
+            return weights[to];
+          }
+
+          let path = shortest(this.from, this.to);
+          return {steps: this.steps, result: path};
+        }
+      };
+
+      class CounterPathsMaxWeightEvaluate extends GraphEvaluate {
+        constructor(graph, from, to, max) {
+          super(graph);
+          this.from = from;
+          this.to = to;
+          this.max = max;
+        }
+
+        evaluate() {
+          this.setAllUnvisited();
+
+          let counter = (from, to, visiteds=[]) => {
+            let current = from;
+            let path = visiteds.concat([current]);
+            this.setAsVisited(current);
+
+            let total = 0;
+            let first = path[0];
+
+            for (let i = 1; i < path.length; i++) {
+              let next = path[i];
+              total = total + this.getWeight(first, next);
+              first = next;
+            };
+
+            let paths = [];
+            if (current === to && path.length > 1 && total < this.max) {
+              paths.push(path);
+              this.setAllUnvisited(this.from);
+            }
+
+            for (let neighbor of this.getNeighbors(current)) {
+              if (total + this.getWeight(current, neighbor) < this.max) {
+                this.setAsCandidate(neighbor);
+                let newPaths = counter(neighbor, to, path);
+                paths = paths.concat(newPaths);
+              }
+            }
+
+            return paths;
+          };
+
+          let paths = counter(this.from, this.to);
+          return {steps: this.steps, result: paths.length};
+        }
+      };
+
+      class CounterPathsMaxHopsEvaluate extends GraphEvaluate {
+        constructor(graph, from, to, max) {
+          super(graph);
+          this.from = from;
+          this.to = to;
+          this.max = max;
+        }
+
+        evaluate() {
+          this.setAllUnvisited();
+
+          let counter = (from, to, visiteds=[]) => {
+            let current = from;
+            let path = visiteds.concat([current]);
+            this.setAsVisited(current);
+
+            let paths = [];
+            if (current === this.to && visiteds.length > 1) {
+              paths.push(path);
+              this.setAllUnvisited(this.from);
+            }
+
+            for (let neighbor of this.getNeighbors(current)) {
+              if (visiteds.length < this.max) {
+                this.setAsCandidate(neighbor);
+                let newPaths = counter(neighbor, to, path);
+                paths = paths.concat(newPaths);
+              }
+            }
+
+            return paths;
+          };
+
+          let paths = counter(this.from, this.to);
+          return {steps: this.steps, result: paths.length};
+        }
+      };
+
+      class CounterPathsExactlyHopsEvaluate extends GraphEvaluate {
+        constructor(graph, from, to, exact) {
+          super(graph);
+          this.from = from;
+          this.to = to;
+          this.exact = exact;
+        }
+
+        evaluate() {
+          this.setAllUnvisited();
+
+          let counter = (from, to, visiteds=[]) => {
+            let current = from;
+            let path = visiteds.concat([current]);
+            this.setAsVisited(current);
+
+            let paths = [];
+            if (current === this.to && visiteds.length > 1 && visiteds.length == this.exact) {
+              paths.push(path);
+              this.setAllUnvisited(this.from);
+            }
+
+            for (let neighbor of this.getNeighbors(current)) {
+              if (visiteds.length < this.exact) {
+                this.setAsCandidate(neighbor);
+                let newPaths = counter(neighbor, to, path);
+                paths = paths.concat(newPaths);
+              }
+            }
+
+            return paths;
+          };
+
+          let paths = counter(this.from, this.to);
+          return {steps: this.steps, result: paths.length};
+        }
+      };
+
+      class WeightEvaluate extends GraphEvaluate {
+        constructor(graph, ...tos) {
+          super(graph);
+          this.tos = tos;
+        }
+
+        evaluate() {
+          let total = 0;
+          this.setAllUnvisited();
+
+          let from = this.tos.shift();
+          this.setAsVisited(from);
+
+          for (let to of this.tos) {
+            this.setAsCandidate(to);
+
+            try {
+              total = total + this.getWeight(from, to);
+            } catch(e) {
+              this.setAllUnvisited();
+              return {steps: this.steps, result: null, error: e.message};
+            }
+
+            from = to;
+            this.setAsVisited(from);
+          }
+
+          return {steps: this.steps, result: total};
+        }
+      };
+
+      class RailsNetwork {
+        routes = [];
+        stations = [];
+
+        constructor(routesStr) {
+          if (!routesStr) {
+            return;
+          }
+
+          let isNumeric = (str) => (/^\d+$/).test(str);
+          let isLetter = (str) => (/^[a-z]$/i).test(str);
+          let routes = routesStr.trim().substring(7).split(',').map(s => s.trim());
+
+          for(let r of routes) {
+            let from = r[0];
+            let to = r[1];
+            let distance = r.substring(2);
+
+            if (!isLetter(from) || !isLetter(to) || !isNumeric(distance)) {
+              continue;
+            }
+
+            this.addRoute(from, to, distance);
+          }
+        }
+
+        addRoute(from, to, distance) {
+          this.stations = _.union(this.stations, [from]);
+          this.stations = _.union(this.stations, [to]);
+          this.routes = _.union(this.routes, [`${from}${to}${distance}`]);
+        }
+
+        toGraph() {
+          let nodes = [];
+          let edges = [];
+
+          for (let station of this.stations) {
+            let neighbors = _.filter(this.routes, route => route.startsWith(`${station}`))
+                             .map(route => route.substring(1,2));
+
+            nodes.push({
+              name: station
+            });
+
+            for (let neighbor of neighbors) {
+              let weight = _.find(this.routes, route => route.startsWith(`${station}${neighbor}`)).substring(2);
+
+              edges.push({
+                from: station,
+                to: neighbor,
+                weight: parseFloat(weight)
+              });
+            }
+          }
+
+          return { nodes: nodes, edges: edges };
+        }
+      };
+    </script>
+
+    <script type='text/babel' data-module='UI' data-language='jsx'>
+      let Problem = React.createClass({
+        render: function() {
+          return (
+            <div>
+              <p>
+                The local commuter railroad services a number of towns in Kiwiland.  Because of monetary concerns, all of the tracks are 'one-way.'  That is, a route from Kaitaia to Invercargill does not imply the existence of a route from Invercargill to Kaitaia.  In fact, even if both of these routes do happen to exist, they are distinct and are not necessarily the same distance!
+              </p>
+
+              <p>
+                The purpose of this problem is to help the railroad provide its customers with information about the routes.  In particular, you will compute the distance along a certain route, the number of different routes between two towns, and the shortest route between two towns.
+              </p>
+
+              <p>
+                <b>Input:</b>  A directed graph where a node represents a town and an edge represents a route between two towns.  The weighting of the edge represents the distance between the two towns.  A given route will never appear more than once, and for a given route, the starting and ending town will not be the same town.
+              </p>
+
+              <p>
+                <b>Output:</b> For test input 1 through 5, if no such route exists, output 'NO SUCH ROUTE'.  Otherwise, follow the route as given; do not make any extra stops!  For example, the first problem means to start at city A, then travel directly to city B (a distance of 5), then directly to city C (a distance of 4).
+              </p>
+
+              <ul>
+                <li>The distance of the route A-B-C.</li>
+                <li>The distance of the route A-D.</li>
+                <li>The distance of the route A-D-C.</li>
+                <li>The distance of the route A-E-B-C-D.</li>
+                <li>The distance of the route A-E-D.</li>
+                <li>The number of trips starting at C and ending at C with a maximum of 3 stops.  In the sample data below, there are two such trips: C-D-C (2 stops). and C-E-B-C (3 stops).</li>
+                <li>The number of trips starting at A and ending at C with exactly 4 stops.  In the sample data below, there are three such trips: A to C (via B,C,D); A to C (via D,C,D); and A to C (via D,E,B).</li>
+                <li>The length of the shortest route (in terms of distance to travel) from A to C.</li>
+                <li>The length of the shortest route (in terms of distance to travel) from B to B.</li>
+                <li>The number of different routes from C to C with a distance of less than 30.  In the sample data, the trips are: CDC, CEBC, CEBCDC, CDCEBC, CDEBC, CEBCEBC, CEBCEBCEBC.</li>
+              </ul>
+
+              <p>
+                <b>Test Input:</b> For the test input, the towns are named using the first few letters of the alphabet from A to D.  A route between two towns (A to B) with a distance of 5 is represented as AB5. <kbd>Graph: AB5, BC4, CD8, DC8, DE6, AD5, CE2, EB3, AE7</kbd>
+              </p>
+
+              <p>
+                <b>Expected Output:</b>
+                <ul>
+                  <li>Output #1: 9</li>
+                  <li>Output #2: 5</li>
+                  <li>Output #3: 13</li>
+                  <li>Output #4: 22</li>
+                  <li>Output #5: NO SUCH ROUTE</li>
+                  <li>Output #6: 2</li>
+                  <li>Output #7: 3</li>
+                  <li>Output #8: 9</li>
+                  <li>Output #9: 9</li>
+                  <li>Output #10: 7</li>
+                </ul>
+              </p>
+            </div>
+          );
+        }
+      });
+
+      let Module = React.createClass({
+        getCode: function() {
+          return {
+            __html: Prism.highlight(this.props.text,
+                                    Prism.languages[this.props.language])
+          };
+        },
+
+        render: function() {
+          return (
+            <div>
+              <p>
+                <b>{this.props.name} Module</b>
+              </p>
+              <pre>
+                <code dangerouslySetInnerHTML={this.getCode()} />
+              </pre>
+            </div>
+          );
+        }
+      });
+
+      let Code = React.createClass({
+        getInitialState: function() {
+          return {
+            modules: []
+          }
+        },
+
+        componentDidMount: function() {
+          this.setState({
+            modules: $('script[data-module]').toArray()
+          });
+        },
+
+        render: function() {
+          if (this.state.modules.length === 0) {
+            return null;
+          }
+
+          return (
+            <div>
+              {this.state.modules.map((m, i) => {
+                return <Module key={i}
+                               text={$(m).text()}
+                               language={$(m).data('language')}
+                               name={$(m).data('module')}/>;
+              })}
+            </div>
+          );
+        }
+      });
+
+      let Test = React.createClass({
+        componentDidMount: function() {
+          let jasmine = $('.jasmine_html-reporter');
+          let testSection = $('#test');
+          testSection.append(jasmine);
+        },
+
+        render: function() {
+          return null;
+        }
+      });
+
+      let Graph = React.createClass({
+        componentDidMount: function() {
+          if (!this.refs.graph) {
+            return;
+          }
+
+          let colors = {
+            'w':  '#97C2FC',
+            'g': 'gray',
+            'b': 'black'
+          };
+
+          let fontColors = {
+            'w':  '#343434',
+            'g': 'white',
+            'b': 'white'
+          }
+
+          let mapNodes = (node) => {
+            return {
+              id: node.name ,
+              label: node.name,
+              color: colors[node.state],
+              font: {
+                color: fontColors[node.state]
+              }
+            };
+          };
+
+          let graph = this.props.steps[0];
+
+          if (!graph) {
+            return;
+          }
+
+          let nodes = graph.nodes.map(mapNodes);
+          let edges = graph.edges.map((edge) => {
+            return {
+              from: edge.from,
+              to: edge.to,
+              label: edge.weight
+            };
+          });
+
+          let data = {
+            nodes: new vis.DataSet(nodes),
+            edges: new vis.DataSet(edges),
+          };
+
+          let options = {
+            height: '400px',
+
+            interaction:{
+              zoomView: false
+            },
+
+            layout: {
+              randomSeed: 3,
+            },
+
+            edges: {
+              arrows: 'to'
+            }
+          };
+
+          new vis.Network(this.refs.graph, data, options);
+
+          let i = 0;
+
+          setInterval(() => {
+            let step = this.props.steps[i % this.props.steps.length];
+            let nodes = step.nodes.map(mapNodes);
+
+            for (let node of nodes) {
+              data.nodes.update(node);
+            }
+
+            i++;
+          }, 1000);
+        },
+
+        render: function() {
+          return (
+            <div className='graph'ref='graph'></div>
+          );
+        }
+      });
+
+      let SolutionItem = React.createClass({
+        render: function() {
+          let graph = this.props.network.toGraph();
+          let evaluate = this.props.item[0];
+          let args = this.props.item.splice(1);
+          let title = `Output #${this.props.idx + 1}: `;
+
+          let output = new window[evaluate](graph, ...args).evaluate();
+          let result = title + (output.result || output.error);
+          let steps = output.steps;
+
+          return (
+            <li className='list-group-item'>
+              <form className='form'>
+                <div className='form-group'>
+                  <input type='text'
+                         disabled={true}
+                         className='form-control'
+                         value={result}/>
+                </div>
+              </form>
+              <Graph steps={steps}/>
+            </li>
+          );
+        }
+      });
+
+      let Solution = React.createClass({
+        defaultValue: 'Graph: AB5, BC4, CD8, DC8, DE6, AD5, CE2, EB3, AE7',
+
+        getInitialState: function() {
+          return {
+            items: [
+              ['WeightEvaluate', 'A', 'B', 'C'],
+              ['WeightEvaluate', 'A', 'D'],
+              ['WeightEvaluate', 'A', 'D', 'C'],
+              ['WeightEvaluate', 'A', 'E', 'B', 'C', 'D'],
+              ['WeightEvaluate', 'A', 'E', 'D'],
+              ['CounterPathsMaxHopsEvaluate', 'C', 'C', 3],
+              ['CounterPathsExactlyHopsEvaluate', 'A', 'C', 4],
+              ['ShortestWeightEvaluate', 'A', 'C'],
+              ['ShortestWeightEvaluate', 'B', 'B'],
+              ['CounterPathsMaxWeightEvaluate', 'C', 'C', 30],
+            ],
+
+            network: new RailsNetwork(this.defaultValue)
+          };
+        },
+
+        onNetworkChange: function() {
+          this.setState({
+            network: new RailsNetwork(this.refs.input.value)
+          });
+        },
+
+        render: function() {
+          return (
+            <div>
+              <form className='form'>
+                <div className='form-group'>
+                  <input onKeyUp={this.onNetworkChange}
+                         type='text'
+                         className='form-control'
+                         id='input'
+                         ref='input'
+                         defaultValue={this.defaultValue}/>
+                </div>
+              </form>
+              <div className='clearfix'></div>
+              <ul className='list-group'>
+                {this.state.items.map((item, i) => {
+                  return <SolutionItem network={this.state.network}
+                                       item={item}
+                                       key={i}
+                                       idx={i}/>;
+                })}
+              </ul>
+            </div>
+          );
+        }
+      });
+    </script>
+
+    <script type='text/babel'>
+    </script>
+  </body>
+</html>
