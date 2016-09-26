@@ -1,8 +1,8 @@
 describe('components', () => {
   describe('SolutionItem', () => {
     describe('#render', () => {
-      it('fail', () => {
-        expect(true).toEqual(false);
+      it('should return null', () => {
+        expect(target.render()).toBeNull();
       });
     });
   });

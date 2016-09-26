@@ -1,8 +1,14 @@
 describe('components', () => {
-  describe('Graph', () => {
+  describe('Problem', () => {
+    let target;
+
+    beforeEach(() => {
+      target = new Problem();
+    });
+
     describe('#render', () => {
-      it('fail', () => {
-        expect(true).toEqual(false);
+      it('should retorn a render object', () => {
+        expect(target.render()).not.toBeNull();
       });
     });
   });

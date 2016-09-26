@@ -1,14 +1,25 @@
 describe('components', () => {
   describe('Test', () => {
+    let target;
+
+    beforeEach(() => {
+      target = new Test();
+    });
+
     describe('#componentDidMount', () => {
-      it('fail', () => {
-        expect(true).toEqual(false);
+      it('should append the section', () => {
+        let append = sinon.stub($.fn, 'append');
+
+        target.componentDidMount();
+
+        expect(append.callCount).toEqual(1);
+        expect(append.thisValues[0].attr('id')).toEqual('test');
       });
     });
 
     describe('#render', () => {
-      it('fail', () => {
-        expect(true).toEqual(false);
+      it('should return null', () => {
+        expect(target.render()).toBeNull();
       });
     });
   });
