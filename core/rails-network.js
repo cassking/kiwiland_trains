@@ -14,19 +14,12 @@ class RailsNetwork {
       return;
     }
 
-    let isNumeric = (str) => (/^\d+$/).test(str);
-    let isLetter = (str) => (/^[a-z]$/i).test(str);
     let normalizedRoutes = routes.trim().substring(7).split(',').map(s => s.trim());
 
     for(let r of normalizedRoutes) {
       let from = r[0];
       let to = r[1];
       let distance = r.substring(2);
-
-      if (!isLetter(from) || !isLetter(to) || !isNumeric(distance)) {
-        continue;
-      }
-
       this.addRoute(from, to, distance);
     }
   }
@@ -39,6 +32,13 @@ class RailsNetwork {
    * @param {number} distance - The distance between thems.
    */
   addRoute(from, to, distance) {
+    let isNumeric = (str) => (/^\d+$/).test(str);
+    let isLetter = (str) => (/^[a-z]$/i).test(str);
+
+    if (!isLetter(from) || !isLetter(to) || !isNumeric(new String(distance))) {
+      return;
+    }
+
     this.stations = _.union(this.stations, [from]);
     this.stations = _.union(this.stations, [to]);
     this.routes = _.union(this.routes, [`${from}${to}${distance}`]);

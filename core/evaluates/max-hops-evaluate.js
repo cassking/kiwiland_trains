@@ -3,7 +3,9 @@
  */
 class MaxHopsEvaluate extends BaseEvaluate {
   constructor(graph, from, to, max) {
-    super(graph, from, to);
+    super(graph);
+    this.from = from;
+    this.to = to;
     this.max = max;
   }
 

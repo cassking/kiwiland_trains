@@ -9,12 +9,11 @@
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine.min.css'>
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.css'>
 
-    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react.min.js'></script>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react-with-addons.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react-dom.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.15.0/babel.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/jasmine-html.min.js'></script>
-    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.5.2/boot.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.16.1/lodash.min.js'></script>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
@@ -26,13 +25,27 @@
     <script type='text/babel' src='core/evaluates/max-weight-evaluate.js'></script>
     <script type='text/babel' src='core/evaluates/shortest-weight-evaluate.js'></script>
     <script type='text/babel' src='core/evaluates/weight-evaluate.js'></script>
-
     <script type='text/babel' src='components/problem.jsx'></script>
     <script type='text/babel' src='components/solution.jsx'></script>
     <script type='text/babel' src='components/solution-item.jsx'></script>
     <script type='text/babel' src='components/graph.jsx'></script>
     <script type='text/babel' src='components/file-input.jsx'></script>
     <script type='text/babel' src='components/test.jsx'></script>
+
+    <script type='text/babel' src='tests/helpers/boot.js'></script>
+    <script type='text/babel' src='tests/core/rails-network-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/base-evaluate-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/max-hops-evaluate-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/exactly-hops-evaluate-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/max-weight-evaluate-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/shortest-weight-evaluate-test.js'></script>
+    <script type='text/babel' src='tests/core/evaluates/weight-evaluate-test.js'></script>
+    <!-- script type='text/javascript' src='tests/components/problem-test.js'></script -->
+    <!-- script type='text/javascript' src='tests/components/solution-test.js'></script -->
+    <!-- script type='text/javascript' src='tests/components/solution-item-test.js'></script -->
+    <!-- script type='text/javascript' src='tests/components/graph-test.js'></script -->
+    <!-- script type='text/javascript' src='tests/components/file-input-test.js'></script -->
+    <!-- script type='text/javascript' src='tests/components/test-test.js'></script -->
   </head>
   <body class='container'>
     <div class='page-header'>
@@ -66,6 +79,10 @@
 
         let test =  $('#test');
         ReactDOM.render(<Test/>, test[0]);
+
+        // run the tests
+        htmlReporter.initialize();
+        env.execute();
       });
     </script>
   </body>

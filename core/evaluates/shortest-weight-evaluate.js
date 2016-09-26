@@ -5,6 +5,12 @@
  * http://en.wikipedia.org/wiki/Dijkstra's_algorithm#Pseudocode
  */
 class ShortestWeightEvaluate extends BaseEvaluate {
+  constructor(graph, from, to, max) {
+    super(graph);
+    this.from = from;
+    this.to = to;
+  }
+
   evaluate() {
     this.setAllUnvisited();
     let from = this.from;

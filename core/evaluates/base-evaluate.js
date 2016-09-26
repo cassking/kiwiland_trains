@@ -5,13 +5,9 @@ class BaseEvaluate {
   /**
    * @constructor
    * @param {object} graph - A graph object.
-   * @param {string} from - The start node.
-   * @param {string} to - The end node
    */
-  constructor(graph, from, to) {
+  constructor(graph) {
     this.graph = graph;
-    this.from = from;
-    this.to = to;
     this.steps = [];
   }
 
@@ -64,7 +60,7 @@ class BaseEvaluate {
    * @return {bool} - True when they are connected.
    */
   isNeighbor(from, to) {
-    return _.find(this.graph.edges, {from, to});
+    return !!_.find(this.graph.edges, {from, to});
   }
 
   /**
@@ -84,19 +80,20 @@ class BaseEvaluate {
    * @return {object} - The node object.
    */
   findNode(name) {
-    return _.find(this.graph.nodes, { name });
+    return _.find(this.graph.nodes, { name }) || null;
   }
 
   /**
    * Given the node name it sets the node as visited.
    *
    * @param {string} name - The node.
+   * @return {object} - The node.
    */
   setAsVisited(name) {
     let node = this.findNode(name);
 
-    if (node) {
-      node.state = 'b';
+    if (!node) {
+      return null;
     }
 
     for(let node of this.graph.nodes) {
@@ -105,29 +102,34 @@ class BaseEvaluate {
       }
     }
 
+    node.state = 'b';
     this.steps.push(_.cloneDeep(this.graph));
+    return node;
   }
 
   /**
    * Given the node name it sets the node as candidate.
    *
    * @param {string} name - The node.
-   * @return {object} - A graph snapshot.
+   * @return {object} - The node.
    */
   setAsCandidate(name) {
     let node = this.findNode(name);
 
-    if (node) {
-      node.state = 'g';
+    if (!node) {
+      return null;
     }
 
+    node.state = 'g';
     this.steps.push(_.cloneDeep(this.graph));
+    return node;
   }
 
   /**
    * Set all nodes as unvisited.
    *
    * @param {string} name - The node.
+   * @return {array[object]} - The nodes.
    */
   setAllUnvisited() {
     for(let node of this.graph.nodes) {
@@ -135,6 +137,7 @@ class BaseEvaluate {
     }
 
     this.steps.push(_.cloneDeep(this.graph));
+    return this.graph.nodes;
   }
 
   /**
@@ -147,16 +150,25 @@ class BaseEvaluate {
    * @param {function} matchCondition - When returns true accepets the current path.
    * @return {array[string]} - The list of paths.
    */
-  iterate(from, to, visiteds, candidateCondition, matchCondition) {
-    let match = matchCondition || function() { return true; };
-    let candidate = candidateCondition || function() { return true; };
+  iterate(from, to, visiteds=[], candidateCondition, matchCondition) {
+    let match = matchCondition || function(visiteds) {
+      return true;
+    };
+
+    let candidate = candidateCondition || function(visiteds, path, current, neighbor) {
+      if (_.filter(visiteds, (n) => n === neighbor).length > 2) {
+        return false;
+      }
+
+      return true;
+    };
 
     let current = from;
     let path = visiteds.concat([current]);
     this.setAsVisited(current);
 
     let paths = [];
-    if (current === this.to && visiteds.length > 1 && match(visiteds, path)) {
+    if (current === to && visiteds.length > 1 && match(visiteds, path)) {
       paths.push(path);
     }
 
